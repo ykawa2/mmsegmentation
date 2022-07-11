@@ -215,6 +215,41 @@ class MMSegWandbHook(WandbLoggerHook):
     def after_run(self, runner):
         self.wandb.finish()
 
+    @master_only
+    def log(self, runner) -> None:
+        tags = self.get_loggable_tags(runner)
+        #print(f'\033[31mtags in wandb.py log():{tags}\033[0m')
+
+        val_phase = False
+        for tag in tags.keys():
+            if 'val/' in tag:
+                val_phase = True
+                break
+
+        # EpochBasedRunnerでは1エポック=35stepごとに評価した場合、valのstep数がなぜか36に
+        # なるため、valはロギングされるがtrainの36step目が無視される。
+        # 逆にIterBasedRunnerでは35stepごとに評価した場合valをstep=35でロギングするため、
+        # step数が重複してしまってロギングできない。これを防ぐには、同一step数で後続のログを行う場合、
+        # wandb.logのcommitをFalseに設定する必要がある。
+        if tags:
+            if self.with_step:
+                if self.get_iter(runner) % self.interval == 0:
+                    if val_phase:
+                        commit = True
+                    else:
+                        commit = False
+                else:
+                    commit = True
+
+                self.wandb.log(
+                    tags, step=self.get_iter(runner), commit=commit)
+            else:
+                raise RuntimeError('This condition not supported.')
+                tags['global_step'] = self.get_iter(runner)
+                self.wandb.log(tags, commit=self.commit)
+        else:
+            raise RuntimeError('This condition not supported.')
+
     def _log_ckpt_as_artifact(self, model_path, aliases, metadata=None):
         """Log model checkpoint as  W&B Artifact.
 

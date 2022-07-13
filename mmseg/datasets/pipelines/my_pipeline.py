@@ -1,7 +1,7 @@
 import os
 import cv2
 
-from mmseg.datasets import PIPELINES
+from ..builder import PIPELINES
 from mmseg.mylib.seg_utils import get_overlay_from_segmap
 
 

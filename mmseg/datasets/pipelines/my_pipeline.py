@@ -17,3 +17,5 @@ class SaveOverlay:
 
         overlay = get_overlay_from_segmap(img, mask, alpha=0.7)
         cv2.imwrite(os.path.join(self.save_dir, str(self.num) + '.jpg'), overlay)
+
+        return data

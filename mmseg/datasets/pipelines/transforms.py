@@ -1,6 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import copy
-
+from random import choice
 import mmcv
 import numpy as np
 from mmcv.utils import deprecated_api_warning, is_tuple_of
@@ -897,10 +897,10 @@ class PhotoMetricDistortion(object):
     def brightness(self, img):
         """Brightness distortion."""
         if random.randint(2):
-            return self.convert(
-                img,
-                beta=random.uniform(-self.brightness_delta,
-                                    self.brightness_delta))
+        return self.convert(
+            img,
+            beta=random.uniform(-self.brightness_delta,
+                                self.brightness_delta))
         return img
 
     def contrast(self, img):
@@ -974,6 +974,101 @@ class PhotoMetricDistortion(object):
                      f'{self.saturation_upper}), '
                      f'hue_delta={self.hue_delta})')
         return repr_str
+
+
+@PIPELINES.register_module()
+class WatchPhotoMetricDistortion(PhotoMetricDistortion):
+    """Apply photometric distortion to image sequentially, every transformation
+    is applied with a probability of 0.5. The position of random contrast is in
+    second or second to last.
+
+    1. random brightness
+    2. random contrast (mode 0)
+    3. convert color from BGR to HSV
+    4. random saturation
+    5. random hue
+    6. convert color from HSV to BGR
+    7. random contrast (mode 1)
+
+    Args:
+        brightness_delta (int): delta of brightness.
+        contrast_range (tuple): range of contrast.
+        saturation_range (tuple): range of saturation.
+        hue_delta (int): delta of hue.
+    """
+
+    def brightness(self, img, results):
+        """Brightness distortion."""
+        delta = choice([-self.brightness_delta, self.brightness_delta])
+        #results['aug_info'] = f'brightness={delta}'
+        return self.convert(
+            img,
+            beta=delta)
+
+    def contrast(self, img, results):
+        """Contrast distortion."""
+        delta = choice([self.contrast_lower, self.contrast_upper])
+        #results['aug_info'] = f'contrast={delta}'
+        return self.convert(
+            img,
+            alpha=delta)
+
+    def saturation(self, img, results):
+        """Saturation distortion."""
+        delta = choice([self.saturation_lower, self.saturation_upper])
+        #results['aug_info'] = f'saturation={delta}'
+
+        img = mmcv.bgr2hsv(img)
+        img[:, :, 1] = self.convert(
+            img[:, :, 1],
+            alpha=delta)
+        img = mmcv.hsv2bgr(img)
+        return img
+
+    def hue(self, img, results):
+        """Hue distortion."""
+        delta = choice([-self.hue_delta, self.hue_delta])
+        #results['aug_info'] = f'hue={delta}'
+
+        img = mmcv.bgr2hsv(img)
+        img[:, :,
+            0] = (img[:, :, 0].astype(int) +
+                  delta) % 180
+        img = mmcv.hsv2bgr(img)
+        return img
+
+    def __call__(self, results):
+        """Call function to perform photometric distortion on images.
+
+        Args:
+            results (dict): Result dict from loading pipeline.
+
+        Returns:
+            dict: Result dict with images distorted.
+        """
+
+        img = results['img']
+        # random brightness
+        img = self.brightness(img, results)
+
+        # mode == 0 --> do random contrast first
+        # mode == 1 --> do random contrast last
+        mode = random.randint(2)
+        if mode == 1:
+            img = self.contrast(img, results)
+
+        # random saturation
+        img = self.saturation(img, results)
+
+        # random hue
+        img = self.hue(img, results)
+
+        # random contrast
+        if mode == 0:
+            img = self.contrast(img, results)
+
+        results['img'] = img
+        return results
 
 
 @PIPELINES.register_module()
@@ -1285,40 +1380,40 @@ class RandomMosaic(object):
         if loc == 'top_left':
             # index0 to top left part of image
             x1, y1, x2, y2 = max(center_position_xy[0] - img_shape_wh[0], 0), \
-                             max(center_position_xy[1] - img_shape_wh[1], 0), \
-                             center_position_xy[0], \
-                             center_position_xy[1]
+                max(center_position_xy[1] - img_shape_wh[1], 0), \
+                center_position_xy[0], \
+                center_position_xy[1]
             crop_coord = img_shape_wh[0] - (x2 - x1), img_shape_wh[1] - (
                 y2 - y1), img_shape_wh[0], img_shape_wh[1]
 
         elif loc == 'top_right':
             # index1 to top right part of image
             x1, y1, x2, y2 = center_position_xy[0], \
-                             max(center_position_xy[1] - img_shape_wh[1], 0), \
-                             min(center_position_xy[0] + img_shape_wh[0],
-                                 self.img_scale[1] * 2), \
-                             center_position_xy[1]
+                max(center_position_xy[1] - img_shape_wh[1], 0), \
+                min(center_position_xy[0] + img_shape_wh[0],
+                    self.img_scale[1] * 2), \
+                center_position_xy[1]
             crop_coord = 0, img_shape_wh[1] - (y2 - y1), min(
                 img_shape_wh[0], x2 - x1), img_shape_wh[1]
 
         elif loc == 'bottom_left':
             # index2 to bottom left part of image
             x1, y1, x2, y2 = max(center_position_xy[0] - img_shape_wh[0], 0), \
-                             center_position_xy[1], \
-                             center_position_xy[0], \
-                             min(self.img_scale[0] * 2, center_position_xy[1] +
-                                 img_shape_wh[1])
+                center_position_xy[1], \
+                center_position_xy[0], \
+                min(self.img_scale[0] * 2, center_position_xy[1] +
+                    img_shape_wh[1])
             crop_coord = img_shape_wh[0] - (x2 - x1), 0, img_shape_wh[0], min(
                 y2 - y1, img_shape_wh[1])
 
         else:
             # index3 to bottom right part of image
             x1, y1, x2, y2 = center_position_xy[0], \
-                             center_position_xy[1], \
-                             min(center_position_xy[0] + img_shape_wh[0],
-                                 self.img_scale[1] * 2), \
-                             min(self.img_scale[0] * 2, center_position_xy[1] +
-                                 img_shape_wh[1])
+                center_position_xy[1], \
+                min(center_position_xy[0] + img_shape_wh[0],
+                    self.img_scale[1] * 2), \
+                min(self.img_scale[0] * 2, center_position_xy[1] +
+                    img_shape_wh[1])
             crop_coord = 0, 0, min(img_shape_wh[0],
                                    x2 - x1), min(y2 - y1, img_shape_wh[1])
 

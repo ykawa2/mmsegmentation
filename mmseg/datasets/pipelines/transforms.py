@@ -897,10 +897,10 @@ class PhotoMetricDistortion(object):
     def brightness(self, img):
         """Brightness distortion."""
         if random.randint(2):
-        return self.convert(
-            img,
-            beta=random.uniform(-self.brightness_delta,
-                                self.brightness_delta))
+            return self.convert(
+                img,
+                beta=random.uniform(-self.brightness_delta,
+                                    self.brightness_delta))
         return img
 
     def contrast(self, img):

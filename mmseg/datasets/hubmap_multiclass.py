@@ -7,8 +7,8 @@ from .custom import CustomDataset
 
 
 @DATASETS.register_module()
-class HubmapDataset(CustomDataset):
-    CLASSES = ('background', 'cell')
+class HubmapMultiClassDataset(CustomDataset):
+    CLASSES = ('background', 'kidney', 'largeintestine', 'lung', 'prostate', 'spleen')
     PALETTE = np.array(
         [[0, 0, 0],
          [128, 0, 0],

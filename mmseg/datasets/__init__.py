@@ -19,6 +19,7 @@ from .potsdam import PotsdamDataset
 from .stare import STAREDataset
 from .voc import PascalVOCDataset
 from .hubmap import HubmapDataset
+from .hubmap_multiclass import HubmapMultiClassDataset
 
 __all__ = [
     'CustomDataset', 'build_dataloader', 'ConcatDataset', 'RepeatDataset',
@@ -27,5 +28,6 @@ __all__ = [
     'PascalContextDataset59', 'ChaseDB1Dataset', 'DRIVEDataset', 'HRFDataset',
     'STAREDataset', 'DarkZurichDataset', 'NightDrivingDataset',
     'COCOStuffDataset', 'LoveDADataset', 'MultiImageMixDataset',
-    'iSAIDDataset', 'ISPRSDataset', 'PotsdamDataset', 'HubmapDataset'
+    'iSAIDDataset', 'ISPRSDataset', 'PotsdamDataset', 'HubmapDataset',
+    'HubmapMultiClassDataset'
 ]

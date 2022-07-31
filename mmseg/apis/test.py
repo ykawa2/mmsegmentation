@@ -122,6 +122,13 @@ def single_gpu_test(model,
         if format_only:
             result = dataset.format_results(
                 result, indices=batch_indices, **format_args)
+
+        # resultはoriginal_shapeのmaskでint64となっている
+        # ここではresultの結果はリストとして蓄積していくため、メモリが肥大化する原因となっている
+        # クラスが0~255(ignore含む)で済む前提としてworkaroundとしてnp.uint8へ変換を行う
+        result = [_.astype(np.uint8) for _ in result]
+
+        # uint8でもメモリ使用量が気になる場合はresultsの更新を無効にする
         if pre_eval:
             # TODO: adapt samples_per_gpu > 1.
             # only samples_per_gpu=1 valid now

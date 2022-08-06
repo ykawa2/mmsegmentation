@@ -104,6 +104,7 @@ class Resize(object):
             As the shape of model input is fixed like 'SETR' and 'BEiT'.
             Following the setting in these models, resized images must be
             bigger than the crop size in ``slide_inference``. Default: None
+        backend (str): added for backend control (2022/8/6)
     """
 
     def __init__(self,
@@ -111,7 +112,8 @@ class Resize(object):
                  multiscale_mode='range',
                  ratio_range=None,
                  keep_ratio=True,
-                 min_size=None):
+                 min_size=None,
+                 backend=None):
         if img_scale is None:
             self.img_scale = None
         else:
@@ -133,6 +135,7 @@ class Resize(object):
         self.ratio_range = ratio_range
         self.keep_ratio = keep_ratio
         self.min_size = min_size
+        self.backend = backend
 
     @staticmethod
     def random_select(img_scales):
@@ -265,7 +268,7 @@ class Resize(object):
                 results['scale'] = (new_h, new_w)
 
             img, scale_factor = mmcv.imrescale(
-                results['img'], results['scale'], return_scale=True)
+                results['img'], results['scale'], return_scale=True, backend=self.backend)
             # the w_scale and h_scale has minor difference
             # a real fix should be done in the mmcv.imrescale in the future
             new_h, new_w = img.shape[:2]
@@ -274,7 +277,7 @@ class Resize(object):
             h_scale = new_h / h
         else:
             img, w_scale, h_scale = mmcv.imresize(
-                results['img'], results['scale'], return_scale=True)
+                results['img'], results['scale'], return_scale=True, backend=self.backend)
         scale_factor = np.array([w_scale, h_scale, w_scale, h_scale],
                                 dtype=np.float32)
         results['img'] = img
@@ -288,10 +291,10 @@ class Resize(object):
         for key in results.get('seg_fields', []):
             if self.keep_ratio:
                 gt_seg = mmcv.imrescale(
-                    results[key], results['scale'], interpolation='nearest')
+                    results[key], results['scale'], interpolation='nearest', backend=self.backend)
             else:
                 gt_seg = mmcv.imresize(
-                    results[key], results['scale'], interpolation='nearest')
+                    results[key], results['scale'], interpolation='nearest', backend=self.backend)
             results[key] = gt_seg
 
     def __call__(self, results):

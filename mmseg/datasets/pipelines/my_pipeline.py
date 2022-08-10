@@ -15,18 +15,13 @@ class SaveOverlay:
         self.save_num = save_num
         self.num = 0
 
-        #t = datetime.datetime.now()
-        #time_stamp = t.strftime('%y%m%d_%H%M%S')
-
         self.save_dir = os.path.join(self.save_root_dir, 'overlay')
 
-        try:
-            os.mkdir(self.save_dir)
-        except FileExistsError as e:
-            print(f'\033[41mRemove {self.save_dir} first')
-            print(e)
-            print('\033[0m')
-            raise FileExistsError
+        if os.path.isdir(self.save_dir):
+            time_stamp = datetime.datetime.now().strftime('%y%m%d%H%M%S')
+            self.save_dir += f'_{time_stamp}'
+
+        os.mkdir(self.save_dir)
 
     def __call__(self, data):
 

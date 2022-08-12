@@ -18,7 +18,7 @@ class SaveOverlay:
         self.save_dir = os.path.join(self.save_root_dir, 'overlay')
 
         if os.path.isdir(self.save_dir):
-            time_stamp = datetime.datetime.now().strftime('%y%m%d%H%M%S')
+            time_stamp = datetime.datetime.now().strftime('%y%m%d%H%M%S%f')
             self.save_dir += f'_{time_stamp}'
 
         os.mkdir(self.save_dir)

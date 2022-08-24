@@ -135,3 +135,49 @@ class HubmapDataAug:
         augmented = self.prostate_downscale(image=img, mask=mask)
 
         return augmented['image'], augmented['mask']
+
+
+@PIPELINES.register_module()
+class ProstateDataAug:
+    mask_unique_map = {
+        'background': [0],
+        'kidney': [0, 1],
+        'largeintestine': [0, 2],
+        'lung': [0, 3],
+        'prostate': [0, 4],
+        'spleen': [0, 5],
+    }
+
+    def __init__(self, scale_min, scale_max, p=1):
+        self.prostate_downscale = A.Downscale(scale_min=scale_min,
+                                              scale_max=scale_max,
+                                              interpolation=cv2.INTER_LINEAR,
+                                              p=p
+                                              )
+
+    def __call__(self, data):
+        img = data['img']
+        mask = data['gt_semantic_seg']
+
+        mask_unique = np.unique(mask)
+        organ = ''
+        for key, val in self.mask_unique_map.items():
+            if val == list(mask_unique):
+                organ = key
+                break
+        if organ == '':
+            raise ValueError(f'mask values mismatch. Got {mask_unique}')
+
+        img, mask = self.data_aug(img, mask, organ)
+        data['img'] = img
+        data['gt_semantic_seg'] = mask
+
+        return data
+
+    def data_aug(self, img, mask, organ):
+        if organ == 'prostate':
+            augmented = self.prostate_downscale(image=img, mask=mask)
+
+            return augmented['image'], augmented['mask']
+        else:
+            return img, mask

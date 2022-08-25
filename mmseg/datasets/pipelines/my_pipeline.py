@@ -138,7 +138,7 @@ class HubmapDataAug:
 
 
 @PIPELINES.register_module()
-class ProstateDataAug:
+class OrganDownscale:
     mask_unique_map = {
         'background': [0],
         'kidney': [0, 1],
@@ -148,12 +148,25 @@ class ProstateDataAug:
         'spleen': [0, 5],
     }
 
-    def __init__(self, scale_min, scale_max, p=1):
-        self.prostate_downscale = A.Downscale(scale_min=scale_min,
-                                              scale_max=scale_max,
+    def __init__(self,
+                 prostate_scale_min,
+                 prostate_scale_max,
+                 others_scale_min,
+                 others_scale_max,
+                 prostate_p=1,
+                 others_p=1
+                 ):
+
+        self.prostate_downscale = A.Downscale(scale_min=prostate_scale_min,
+                                              scale_max=prostate_scale_max,
                                               interpolation=cv2.INTER_LINEAR,
-                                              p=p
+                                              p=prostate_p
                                               )
+        self.others_downscale = A.Downscale(scale_min=others_scale_min,
+                                            scale_max=others_scale_max,
+                                            interpolation=cv2.INTER_LINEAR,
+                                            p=others_p
+                                            )
 
     def __call__(self, data):
         img = data['img']
@@ -177,7 +190,6 @@ class ProstateDataAug:
     def data_aug(self, img, mask, organ):
         if organ == 'prostate':
             augmented = self.prostate_downscale(image=img, mask=mask)
-
-            return augmented['image'], augmented['mask']
         else:
-            return img, mask
+            augmented = self.others_downscale(image=img, mask=mask)
+        return augmented['image'], augmented['mask']

@@ -86,58 +86,6 @@ class Convert2Class1:
 
 
 @PIPELINES.register_module()
-class HubmapDataAug:
-    mask_unique_map = {
-        'background': [0],
-        'kidney': [0, 1],
-        'largeintestine': [0, 2],
-        'lung': [0, 3],
-        'prostate': [0, 4],
-        'spleen': [0, 5],
-    }
-
-    def __init__(self,
-                 prostate_scale_min,
-                 prostate_scale_max,
-                 ):
-        self.prostate_downscale = A.Downscale(scale_min=prostate_scale_min,
-                                              scale_max=prostate_scale_max,
-                                              interpolation=cv2.INTER_LINEAR,
-                                              p=0.7
-                                              )
-
-    def __call__(self, data):
-        img = data['img']
-        mask = data['gt_semantic_seg']
-
-        mask_unique = np.unique(mask)
-        organ = ''
-        for key, val in self.mask_unique_map.items():
-            if val == list(mask_unique):
-                organ = key
-                break
-        if organ == '':
-            raise ValueError(f'mask values mismatch. Got {mask_unique}')
-
-        img, mask = self.data_aug(img, mask, organ)
-        data['img'] = img
-        data['gt_semantic_seg'] = mask
-
-        return data
-
-    def data_aug(self, img, mask, organ):
-        if organ == 'prostate':
-            img, mask = self.aug_prostate(img, mask)
-
-        return img, mask
-
-    def aug_prostate(self, img, mask):
-        augmented = self.prostate_downscale(image=img, mask=mask)
-
-        return augmented['image'], augmented['mask']
-
-
-@PIPELINES.register_module()
 class OrganDownscale:
     mask_unique_map = {
         'background': [0],
@@ -192,4 +140,76 @@ class OrganDownscale:
             augmented = self.prostate_downscale(image=img, mask=mask)
         else:
             augmented = self.others_downscale(image=img, mask=mask)
+        return augmented['image'], augmented['mask']
+
+
+@PIPELINES.register_module()
+class HubmapDataAug:
+    mask_unique_map = {
+        'background': [0],
+        'kidney': [0, 1],
+        'largeintestine': [0, 2],
+        'lung': [0, 3],
+        'prostate': [0, 4],
+        'spleen': [0, 5],
+    }
+
+    def __init__(self,
+                 crop=False,
+                 flip=True,
+                 rotate_90=True,
+                 grid_distortion=False,
+                 elastic_transform=False,
+                 gaussian_blur=False,
+                 hue_saturation_value=False,
+                 random_gamma=False
+                 ):
+
+        transforms = []
+
+        if crop:
+            transforms.append(A.Crop(x_min=100, y_min=100, x_max=1900, y_max=1900, p=0.9))
+        if flip:
+            transforms.append(A.Flip(p=1))
+        if rotate_90:
+            transforms.append(A.RandomRotate90(p=1))
+        if grid_distortion:
+            transforms.append(A.GridDistortion(p=1))
+        if elastic_transform:
+            transforms.append(A.ElasticTransform(p=1))
+        if gaussian_blur:
+            transforms.append(A.GaussianBlur(blur_limit=(3, 9), p=0.2))
+        if hue_saturation_value:
+            transforms.append(A.HueSaturationValue(hue_shift_limit=(-40, 40),
+                                                   sat_shift_limit=(-20, 40),
+                                                   val_shift_limit=(-40, 40),
+                                                   p=1)
+                              )
+        if random_gamma:
+            transforms.append(A.RandomGamma(gamma_limit=(80.0, 250.0), p=0.7))
+
+        self.transforms = A.Compose(transforms)
+
+    def __call__(self, data):
+        img = data['img']
+        mask = data['gt_semantic_seg']
+
+        mask_unique = np.unique(mask)
+        organ = ''
+        for key, val in self.mask_unique_map.items():
+            if val == list(mask_unique):
+                organ = key
+                break
+        if organ == '':
+            raise ValueError(f'mask values mismatch. Got {mask_unique}')
+
+        img, mask = self.data_aug(img, mask, organ)
+        data['img'] = img
+        data['gt_semantic_seg'] = mask
+
+        return data
+
+    def data_aug(self, img, mask, organ):
+        augmented = self.transforms(image=img, mask=mask)
+
         return augmented['image'], augmented['mask']

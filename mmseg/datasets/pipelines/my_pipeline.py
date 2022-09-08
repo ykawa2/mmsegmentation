@@ -180,13 +180,13 @@ class HubmapDataAug:
         if gaussian_blur:
             transforms.append(A.GaussianBlur(blur_limit=(3, 9), p=0.2))
         if hue_saturation_value:
-            transforms.append(A.HueSaturationValue(hue_shift_limit=(-40, 40),
-                                                   sat_shift_limit=(-20, 40),
-                                                   val_shift_limit=(-40, 40),
+            transforms.append(A.HueSaturationValue(hue_shift_limit=(-20, 20),
+                                                   sat_shift_limit=(-20, 20),
+                                                   val_shift_limit=(-20, 20),
                                                    p=1)
                               )
         if random_gamma:
-            transforms.append(A.RandomGamma(gamma_limit=(80.0, 250.0), p=0.7))
+            transforms.append(A.RandomGamma(gamma_limit=(40.0, 300.0), p=0.9))
 
         self.transforms = A.Compose(transforms)
 
@@ -211,5 +211,44 @@ class HubmapDataAug:
 
     def data_aug(self, img, mask, organ):
         augmented = self.transforms(image=img, mask=mask)
+
+        return augmented['image'], augmented['mask']
+
+
+@PIPELINES.register_module()
+class ElasticTransform:
+    mask_unique_map = {
+        'background': [0],
+        'kidney': [0, 1],
+        'largeintestine': [0, 2],
+        'lung': [0, 3],
+        'prostate': [0, 4],
+        'spleen': [0, 5],
+    }
+
+    def __init__(self, p=1, **kwargs):
+        self.transform = A.ElasticTransform(p=1, **kwargs)
+
+    def __call__(self, data):
+        img = data['img']
+        mask = data['gt_semantic_seg']
+
+        mask_unique = np.unique(mask)
+        organ = ''
+        for key, val in self.mask_unique_map.items():
+            if val == list(mask_unique):
+                organ = key
+                break
+        if organ == '':
+            raise ValueError(f'mask values mismatch. Got {mask_unique}')
+
+        img, mask = self.data_aug(img, mask, organ)
+        data['img'] = img
+        data['gt_semantic_seg'] = mask
+
+        return data
+
+    def data_aug(self, img, mask, organ):
+        augmented = self.transform(image=img, mask=mask)
 
         return augmented['image'], augmented['mask']

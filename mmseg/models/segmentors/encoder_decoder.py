@@ -246,7 +246,7 @@ class EncoderDecoder(BaseSegmentor):
         else:
             seg_logit = self.whole_inference(img, img_meta, rescale)
 
-        if self.test_cfg.get('logits', False):
+        if self.test_cfg.get('sigmoid', False):
             output = F.sigmoid(seg_logit)
         else:
             output = F.softmax(seg_logit, dim=1)
@@ -264,7 +264,7 @@ class EncoderDecoder(BaseSegmentor):
     def simple_test(self, img, img_meta, rescale=True):
         """Simple test with single image."""
         seg_logit = self.inference(img, img_meta, rescale)
-        if self.test_cfg.get('logits', False):
+        if self.test_cfg.get('sigmoid', False):
             seg_pred = seg_logit
         else:
             seg_pred = seg_logit.argmax(dim=1)
@@ -290,7 +290,7 @@ class EncoderDecoder(BaseSegmentor):
             cur_seg_logit = self.inference(imgs[i], img_metas[i], rescale)
             seg_logit += cur_seg_logit
         seg_logit /= len(imgs)
-        if self.test_cfg.get('logits', False):
+        if self.test_cfg.get('sigmoid', False):
             seg_pred = seg_logit
         else:
             seg_pred = seg_logit.argmax(dim=1)

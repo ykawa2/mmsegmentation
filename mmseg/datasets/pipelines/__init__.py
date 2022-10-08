@@ -8,7 +8,7 @@ from .transforms import (CLAHE, AdjustGamma, Normalize, Pad,
                          PhotoMetricDistortion, RandomCrop, RandomCutOut,
                          RandomFlip, RandomMosaic, RandomRotate, Rerange,
                          Resize, RGB2Gray, SegRescale)
-import my_pipeline
+from .my_pipeline import *
 
 __all__ = [
     'Compose', 'to_tensor', 'ToTensor', 'ImageToTensor', 'ToDataContainer',

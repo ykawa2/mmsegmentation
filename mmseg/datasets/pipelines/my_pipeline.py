@@ -1,5 +1,6 @@
 import datetime
 import os
+import glob
 
 import albumentations as A
 import cv2
@@ -40,10 +41,41 @@ class SaveOverlay:
             else:
                 overlay = get_overlay_from_segmap(img, mask, alpha=0.5, small_map=False)
             aug = data.get('aug_info', '')
-            save_path = os.path.join(self.save_dir, str(self.num) + f"{aug}.jpg")
-            Image.fromarray(overlay).save(save_path)
+
+            img = Image.fromarray(overlay)
+            w, h = img.size
+            save_path = f'{self.save_dir}/{self.num}_{aug}_{h}x{w}.jpg'
+            img.save(save_path)
+
         elif self.num == self.save_num + 1:
             print(f'\033[41mSaved all {self.save_num} images\033[0m')
+
+        return data
+
+
+@PIPELINES.register_module()
+class SaveImg:
+    # 毎回インスタンスを作成しているため、SaveOverlayとは異なる実装となっている。
+
+    def __init__(self, save_dir, save_num=100):
+        self.save_dir = save_dir
+        self.save_num = save_num
+        self.num = 0
+
+        if not os.path.isdir(self.save_dir):
+            os.mkdir(self.save_dir)
+
+    def __call__(self, data):
+        files = glob.glob(f'{self.save_dir}/*.jpg')
+
+        if len(files) <= self.save_num:
+            img = data['img']
+            img = Image.fromarray(img)
+            w, h = img.size
+
+            time_stamp = datetime.datetime.now().strftime('%y%m%d%H%M%S%f')
+            save_path = f'{self.save_dir}/{str(time_stamp)}_{h}x{w}.jpg'
+            img.save(save_path)
 
         return data
 

@@ -41,10 +41,11 @@ class SaveOverlay:
             else:
                 overlay = get_overlay_from_segmap(img, mask, alpha=0.5, small_map=False)
             aug = data.get('aug_info', '')
+            aug = f'_{aug}' if aug else ''
 
             img = Image.fromarray(overlay)
             w, h = img.size
-            save_path = f'{self.save_dir}/{self.num}_{aug}_{h}x{w}.jpg'
+            save_path = f'{self.save_dir}/{self.num}{aug}_{h}x{w}.jpg'
             img.save(save_path)
 
         elif self.num == self.save_num + 1:
@@ -70,12 +71,14 @@ class SaveImg:
 
         if len(files) <= self.save_num:
             img = data['img']
-            img = Image.fromarray(img)
-            w, h = img.size
 
+            if img.dtype != np.uint8:
+                img = (img * 255).astype(np.uint8)
+
+            h, w, c = img.shape
             time_stamp = datetime.datetime.now().strftime('%y%m%d%H%M%S%f')
             save_path = f'{self.save_dir}/{str(time_stamp)}_{h}x{w}.jpg'
-            img.save(save_path)
+            cv2.imwrite(save_path, img)
 
         return data
 
